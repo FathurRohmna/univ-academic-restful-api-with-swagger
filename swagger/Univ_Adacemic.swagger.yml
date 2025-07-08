@@ -1,0 +1,295 @@
+openapi: '3.0.3'
+info:
+  title: University Academic RESTful API
+  version: '1.0'
+  description: API Spec for University Academic RESTful API
+servers:
+  - url: https://univ-academic-restful-api-70017640279.us-central1.run.app/api
+paths:
+  /students/register:
+    post:
+      tags:
+        - Students
+      summary: Register a new student
+      description: Save new student data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudentRequest"
+      responses:
+        '201':
+          description: Successfully registered the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentResponse"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+  /students/login:
+    post:
+      tags:
+        - Students
+      summary: Login a student
+      description: Login and get an access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginStudentRequest"
+      responses:
+        '200':
+          description: Successfully logged in and received token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+        '400':
+          $ref: "#/components/responses/ValidationError"
+  /students/me:
+    get:
+      tags:
+        - Students
+      summary: Get logged-in student details
+      description: Retrieve information about the currently logged-in user
+      security:
+        - jwtAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved user information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentWithCoursesResponse"
+        '401':
+          $ref: "#/components/responses/UnauthorizedError"
+  /courses:
+    get:
+      tags:
+        - Courses
+      summary: Get available courses
+      description: Retrieve all available courses
+      security:
+        - jwtAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved courses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Course"
+  /enrollments:
+    post:
+      tags:
+        - Enrollments
+      summary: Enroll in a course
+      description: Enroll a student in a specific course
+      security:
+        - jwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnrollmentRequest"
+      responses:
+        '201':
+          description: Successfully enrolled in the course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponse"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '409':
+          description: Conflict - Student already enrolled in the course
+  /enrollments/{course_id}:
+    delete:
+      tags:
+        - Enrollments
+      summary: Delete an enrollment
+      description: Remove an enrollment by ID
+      security:
+        - jwtAuth: []
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          description: Course ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully deleted the enrollment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '404':
+          $ref: "#/components/responses/NotFoundError"
+components:
+  schemas:
+    CreateStudentRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        address:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        birth_date:
+          type: string
+          format: date
+      required:
+        - first_name
+        - last_name
+        - address
+        - email
+        - password
+        - birth_date
+    LoginStudentRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+    StudentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Student"
+    StudentWithCoursesResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            student:
+              $ref: "#/components/schemas/Student"
+            enrollments:
+              type: array
+              items:
+                type: object
+                properties:
+                  course_title:
+                    type: string
+                  enrollment_date:
+                    type: string
+                    format: date-time
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+    CreateEnrollmentRequest:
+      type: object
+      properties:
+        course_id:
+          type: string
+          format: uuid
+      required:
+        - course_id
+    EnrollmentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            course:
+              $ref: "#/components/schemas/Course"
+            enrollment_date:
+              type: string
+              format: date-time
+    Student:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        address:
+          type: string
+        email:
+          type: string
+          format: email
+        birth_date:
+          type: string
+          format: date
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              error:
+                type: string
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
